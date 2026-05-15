@@ -70,52 +70,32 @@ function enhancePrompt(userPrompt) {
 const HF_TOKEN = process.env.HF_TOKEN; // User must provide this in .env
 const MODEL_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
 
-async function generateImage(prompt, index) {
-  try {
-    const seed = Math.floor(Math.random() * 1000000) + index;
-    const encodedPrompt = encodeURIComponent(prompt);
-    // Pollinations.ai provides free text-to-image without API keys, using open models
-    const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${seed}&width=1024&height=1024&nologo=true`;
-    
-    const response = await axios.get(url, { responseType: 'arraybuffer' });
-    const base64Image = Buffer.from(response.data, 'binary').toString('base64');
-    return `data:image/jpeg;base64,${base64Image}`;
-  } catch (error) {
-    console.error(`Error generating image ${index}:`, error.message);
-    return null;
-  }
+function generateImageUrls(prompt) {
+  const encodedPrompt = encodeURIComponent(prompt);
+  // Using multiple sources and seeds to ensure diversity and avoid rate limits
+  return [
+    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`,
+    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`,
+    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`,
+    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`,
+    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`
+  ];
 }
 
-// Quality Filtering (Mock implementation as per requirements)
-function filterQuality(images) {
-  // In a production environment, we would use CLIP or a vision model
-  // to rank images. Here we ensure they are valid base64 strings.
-  return images.filter(img => img && img.length > 1000).slice(0, 5);
-}
-
-app.post('/api/generate', async (req, res) => {
+app.post('/api/generate', (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
   const enhancedPrompt = enhancePrompt(prompt);
-  console.log('Generating images for:', enhancedPrompt);
+  console.log('Generating URLs for:', enhancedPrompt);
 
   try {
-    // Generate 5 images in parallel
-    const promises = Array.from({ length: 5 }).map((_, i) => generateImage(enhancedPrompt, i));
-    let images = await Promise.all(promises);
+    const urls = generateImageUrls(enhancedPrompt);
     
-    // Filter and ensure we have results
-    const filteredImages = filterQuality(images);
-    
-    if (filteredImages.length === 0) {
-      throw new Error('All generation attempts failed. Please check your HF_TOKEN or Hugging Face rate limits.');
-    }
-
     res.json({
       prompt,
       enhancedPrompt,
-      images: filteredImages
+      images: urls
     });
   } catch (error) {
     console.error('Generation error:', error.message);
