@@ -68,7 +68,8 @@ function enhancePrompt(userPrompt) {
 }
 
 const HF_TOKEN = process.env.HF_TOKEN;
-const MODEL_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
+// FLUX.1-schnell via HF router - confirmed working with Accept: image/png header
+const MODEL_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell";
 
 async function generateImage(prompt, index) {
   try {
@@ -86,7 +87,8 @@ async function generateImage(prompt, index) {
       {
         headers: { 
           Authorization: `Bearer ${HF_TOKEN}`,
-          "Content-Type": "application/json"
+          "Content-Type": "application/json",
+          "Accept": "image/png"
         },
         responseType: 'arraybuffer'
       }
