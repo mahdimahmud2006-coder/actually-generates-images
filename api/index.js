@@ -71,14 +71,10 @@ function enhancePrompt(userPrompt) {
 }
 
 // Pollinations.ai - 100% free, no API key, powered by FLUX open-source models
-// The server returns URLs instantly; the browser loads images directly (no server timeout risk)
-function generateImageUrls(prompt) {
+function generateImageUrl(prompt) {
   const encoded = encodeURIComponent(prompt);
-  const models = ['flux', 'flux-realism', 'flux-anime', 'flux-3d', 'turbo'];
-  return models.map((model, i) => {
-    const seed = Math.floor(Math.random() * 999999) + i * 1000;
-    return `https://image.pollinations.ai/prompt/${encoded}?model=${model}&seed=${seed}&width=1024&height=1024&nologo=true`;
-  });
+  const seed = Math.floor(Math.random() * 999999);
+  return `https://image.pollinations.ai/prompt/${encoded}?model=flux&seed=${seed}&width=1024&height=1024&nologo=true`;
 }
 
 app.post('/api/generate', (req, res) => {
@@ -88,13 +84,12 @@ app.post('/api/generate', (req, res) => {
   const enhancedPrompt = enhancePrompt(prompt);
   console.log('Generating via Pollinations for:', enhancedPrompt);
 
-  // Returns instantly — browser loads images directly from Pollinations CDN
-  const images = generateImageUrls(enhancedPrompt);
+  const imageUrl = generateImageUrl(enhancedPrompt);
 
   res.json({
     prompt,
     enhancedPrompt,
-    images
+    images: [imageUrl]
   });
 });
 

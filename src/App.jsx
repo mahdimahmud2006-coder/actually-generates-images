@@ -317,22 +317,21 @@ const App = () => {
                 </AnimatePresence>
               </div>
 
-              <div className="gallery-grid">
-                {images.map((img, idx) => (
+              <div className="flex justify-center">
+                {images[0] && (
                   <motion.div
-                    key={idx}
                     initial={{ opacity: 0, y: 50, scale: 0.9 }}
                     animate={{ opacity: 1, y: 0, scale: 1 }}
-                    transition={{ delay: idx * 0.1, type: "spring", stiffness: 100 }}
-                    className={`gallery-item ${selectedImage === img ? 'selected' : ''}`}
-                    onClick={() => handleSelect(img)}
+                    transition={{ type: "spring", stiffness: 100 }}
+                    className={`gallery-item max-w-2xl w-full ${selectedImage === images[0] ? 'selected' : ''}`}
+                    onClick={() => handleSelect(images[0])}
                   >
                     <div className="gallery-img-wrapper">
-                      <img src={img} alt={`Result ${idx}`} className="gallery-img" />
+                      <img src={images[0]} alt="Generated result" className="gallery-img" />
                       <div className="selection-ring" />
                     </div>
                     <AnimatePresence>
-                      {selectedImage === img && (
+                      {selectedImage === images[0] && (
                         <motion.div 
                           initial={{ opacity: 0, y: 10 }}
                           animate={{ opacity: 1, y: 0 }}
@@ -344,7 +343,7 @@ const App = () => {
                       )}
                     </AnimatePresence>
                   </motion.div>
-                ))}
+                )}
               </div>
             </motion.div>
           )}
