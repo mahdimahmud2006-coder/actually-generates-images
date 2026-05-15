@@ -10,7 +10,7 @@ dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 5000;
-const DB_PATH = path.join(__dirname, 'db.json');
+const DB_PATH = process.env.VERCEL ? '/tmp/db.json' : path.join(__dirname, 'db.json');
 
 // Initialize Simple JSON Database
 if (!fs.existsSync(DB_PATH)) {
@@ -147,6 +147,11 @@ app.get('/api/share/:code', (req, res) => {
   res.json(result);
 });
 
-app.listen(port, () => {
-  console.log(`ImagineX Server running at http://localhost:${port}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(port, () => {
+    console.log(`ImagineX Server running at http://localhost:${port}`);
+  });
+}
+
+// Export for Vercel Serverless
+module.exports = app;
