@@ -1,10 +1,14 @@
-const express = require('express');
-const cors = require('cors');
-const dotenv = require('dotenv');
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
-const { customAlphabet } = require('nanoid');
+import express from 'express';
+import cors from 'cors';
+import dotenv from 'dotenv';
+import axios from 'axios';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { customAlphabet } from 'nanoid';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 dotenv.config();
 
@@ -154,4 +158,4 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // Export for Vercel Serverless
-module.exports = app;
+export default app;
