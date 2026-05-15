@@ -1,7 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, useSpring } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Sparkles, ArrowRight, Copy, Check, ArrowLeft, Share } from 'lucide-react';
 import axios from 'axios';
+
+// Preload an image URL — returns a promise that resolves when img is loaded
+function preloadImage(url) {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    img.onload = () => resolve(url);
+    img.onerror = () => reject(new Error('Image failed to load'));
+    img.src = url;
+  });
+}
 
 // Spring config — Apple-like feel
 const spring = { type: 'spring', stiffness: 200, damping: 28, mass: 0.8 };
@@ -68,8 +78,12 @@ export default function App() {
         axios.post('/api/generate', { prompt }),
         minTimer
       ]);
+      const url = res.data.images[0];
+      // Keep loading spinner while image actually downloads from Pollinations
+      setLoadingText('Loading image…');
+      await preloadImage(url);
       clearInterval(interval);
-      setImageUrl(res.data.images[0]);
+      setImageUrl(url);
       setStep('result');
     } catch (err) {
       clearInterval(interval);

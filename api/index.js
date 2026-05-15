@@ -74,7 +74,7 @@ function enhancePrompt(userPrompt) {
 function generateImageUrl(prompt) {
   const encoded = encodeURIComponent(prompt);
   const seed = Math.floor(Math.random() * 999999);
-  return `https://image.pollinations.ai/prompt/${encoded}?model=flux&seed=${seed}&width=1024&height=1024&nologo=true`;
+  return `https://image.pollinations.ai/prompt/${encoded}?model=turbo&seed=${seed}&width=1024&height=1024&nologo=true&enhance=false`;
 }
 
 app.post('/api/generate', (req, res) => {
