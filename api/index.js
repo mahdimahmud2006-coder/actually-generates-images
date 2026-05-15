@@ -1,5 +1,5 @@
-// Vercel Serverless Function config - extend timeout to 60s
-export const config = { maxDuration: 60 };
+// Vercel Serverless Function config
+export const config = { maxDuration: 30 };
 
 import express from 'express';
 import cors from 'cors';
@@ -70,76 +70,32 @@ function enhancePrompt(userPrompt) {
   return `${base}, ${additions}`;
 }
 
-const HF_TOKEN = process.env.HF_TOKEN;
-// FLUX.1-schnell via HF router - confirmed working with Accept: image/png header
-const MODEL_URL = "https://router.huggingface.co/hf-inference/models/black-forest-labs/FLUX.1-schnell";
-
-async function generateImage(prompt, index) {
-  try {
-    const response = await axios.post(
-      MODEL_URL,
-      { 
-        inputs: prompt,
-        parameters: {
-          seed: Math.floor(Math.random() * 1000000) + index * 1000,
-          num_inference_steps: 4  // FLUX.1-schnell is optimized for 1-4 steps
-        },
-        options: { wait_for_model: true }
-      },
-      {
-        headers: { 
-          Authorization: `Bearer ${HF_TOKEN}`,
-          "Content-Type": "application/json",
-          "Accept": "image/png"
-        },
-        responseType: 'arraybuffer',
-        timeout: 55000  // 55s per image, under Vercel's 60s limit
-      }
-    );
-    
-    const base64Image = Buffer.from(response.data, 'binary').toString('base64');
-    return `data:image/png;base64,${base64Image}`;
-  } catch (error) {
-    console.error(`Error generating image ${index}:`, error.message);
-    return null;
-  }
+// Pollinations.ai - 100% free, no API key, powered by FLUX open-source models
+// The server returns URLs instantly; the browser loads images directly (no server timeout risk)
+function generateImageUrls(prompt) {
+  const encoded = encodeURIComponent(prompt);
+  const models = ['flux', 'flux-realism', 'flux-anime', 'flux-3d', 'turbo'];
+  return models.map((model, i) => {
+    const seed = Math.floor(Math.random() * 999999) + i * 1000;
+    return `https://image.pollinations.ai/prompt/${encoded}?model=${model}&seed=${seed}&width=1024&height=1024&nologo=true`;
+  });
 }
 
-function filterQuality(images) {
-  return images.filter(img => img && img.length > 1000).slice(0, 5);
-}
-
-app.post('/api/generate', async (req, res) => {
+app.post('/api/generate', (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
   const enhancedPrompt = enhancePrompt(prompt);
-  console.log('Generating images for:', enhancedPrompt);
+  console.log('Generating via Pollinations for:', enhancedPrompt);
 
-  try {
-    // Generate images sequentially to avoid rate limits and parallel timeouts
-    // FLUX.1-schnell with 4 steps is fast (~5s each), so 5 images = ~25s total
-    const images = [];
-    for (let i = 0; i < 5; i++) {
-      const img = await generateImage(enhancedPrompt, i);
-      if (img) images.push(img);
-    }
-    
-    const filteredImages = filterQuality(images);
-    
-    if (filteredImages.length === 0) {
-      throw new Error('All generation attempts failed. Please check your HF_TOKEN on Vercel environment variables.');
-    }
+  // Returns instantly — browser loads images directly from Pollinations CDN
+  const images = generateImageUrls(enhancedPrompt);
 
-    res.json({
-      prompt,
-      enhancedPrompt,
-      images: filteredImages
-    });
-  } catch (error) {
-    console.error('Generation error:', error.message);
-    res.status(500).json({ error: error.message });
-  }
+  res.json({
+    prompt,
+    enhancedPrompt,
+    images
+  });
 });
 
 app.post('/api/save', (req, res) => {
