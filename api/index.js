@@ -67,35 +67,65 @@ function enhancePrompt(userPrompt) {
   return `${base}, ${additions}`;
 }
 
-const HF_TOKEN = process.env.HF_TOKEN; // User must provide this in .env
+const HF_TOKEN = process.env.HF_TOKEN;
 const MODEL_URL = "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0";
 
-function generateImageUrls(prompt) {
-  const encodedPrompt = encodeURIComponent(prompt);
-  // Using multiple sources and seeds to ensure diversity and avoid rate limits
-  return [
-    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`,
-    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`,
-    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`,
-    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`,
-    `https://image.pollinations.ai/prompt/${encodedPrompt}?seed=${Math.floor(Math.random() * 100000)}&width=1024&height=1024&nologo=true`
-  ];
+async function generateImage(prompt, index) {
+  try {
+    const response = await axios.post(
+      MODEL_URL,
+      { 
+        inputs: prompt,
+        parameters: {
+          seed: Math.floor(Math.random() * 1000000),
+          guidance_scale: 7.5,
+          num_inference_steps: 30
+        },
+        options: { wait_for_model: true }
+      },
+      {
+        headers: { 
+          Authorization: `Bearer ${HF_TOKEN}`,
+          "Content-Type": "application/json"
+        },
+        responseType: 'arraybuffer'
+      }
+    );
+    
+    const base64Image = Buffer.from(response.data, 'binary').toString('base64');
+    return `data:image/png;base64,${base64Image}`;
+  } catch (error) {
+    console.error(`Error generating image ${index}:`, error.message);
+    return null;
+  }
 }
 
-app.post('/api/generate', (req, res) => {
+function filterQuality(images) {
+  return images.filter(img => img && img.length > 1000).slice(0, 5);
+}
+
+app.post('/api/generate', async (req, res) => {
   const { prompt } = req.body;
   if (!prompt) return res.status(400).json({ error: 'Prompt is required' });
 
   const enhancedPrompt = enhancePrompt(prompt);
-  console.log('Generating URLs for:', enhancedPrompt);
+  console.log('Generating images for:', enhancedPrompt);
 
   try {
-    const urls = generateImageUrls(enhancedPrompt);
+    // Generate 5 images in parallel using original HF logic
+    const promises = Array.from({ length: 5 }).map((_, i) => generateImage(enhancedPrompt, i));
+    let images = await Promise.all(promises);
     
+    const filteredImages = filterQuality(images);
+    
+    if (filteredImages.length === 0) {
+      throw new Error('All generation attempts failed. Please check your HF_TOKEN or Hugging Face rate limits.');
+    }
+
     res.json({
       prompt,
       enhancedPrompt,
-      images: urls
+      images: filteredImages
     });
   } catch (error) {
     console.error('Generation error:', error.message);
