@@ -1,3 +1,6 @@
+// Vercel Serverless Function config - extend timeout to 60s
+export const config = { maxDuration: 60 };
+
 import express from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
@@ -78,9 +81,8 @@ async function generateImage(prompt, index) {
       { 
         inputs: prompt,
         parameters: {
-          seed: Math.floor(Math.random() * 1000000),
-          guidance_scale: 7.5,
-          num_inference_steps: 30
+          seed: Math.floor(Math.random() * 1000000) + index * 1000,
+          num_inference_steps: 4  // FLUX.1-schnell is optimized for 1-4 steps
         },
         options: { wait_for_model: true }
       },
@@ -90,7 +92,8 @@ async function generateImage(prompt, index) {
           "Content-Type": "application/json",
           "Accept": "image/png"
         },
-        responseType: 'arraybuffer'
+        responseType: 'arraybuffer',
+        timeout: 55000  // 55s per image, under Vercel's 60s limit
       }
     );
     
@@ -114,14 +117,18 @@ app.post('/api/generate', async (req, res) => {
   console.log('Generating images for:', enhancedPrompt);
 
   try {
-    // Generate 5 images in parallel using original HF logic
-    const promises = Array.from({ length: 5 }).map((_, i) => generateImage(enhancedPrompt, i));
-    let images = await Promise.all(promises);
+    // Generate images sequentially to avoid rate limits and parallel timeouts
+    // FLUX.1-schnell with 4 steps is fast (~5s each), so 5 images = ~25s total
+    const images = [];
+    for (let i = 0; i < 5; i++) {
+      const img = await generateImage(enhancedPrompt, i);
+      if (img) images.push(img);
+    }
     
     const filteredImages = filterQuality(images);
     
     if (filteredImages.length === 0) {
-      throw new Error('All generation attempts failed. Please check your HF_TOKEN or Hugging Face rate limits.');
+      throw new Error('All generation attempts failed. Please check your HF_TOKEN on Vercel environment variables.');
     }
 
     res.json({
